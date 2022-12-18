@@ -127,7 +127,8 @@ namespace Hatate
 			Settings.Default.AutoSend = (bool)this.CheckBox_AutoSend.IsChecked;
 			Settings.Default.DeleteImported = (bool)this.CheckBox_DeleteImported.IsChecked;
 			Settings.Default.AssociateUrl = (bool)this.CheckBox_AssociateUrl.IsChecked;
-			Settings.Default.SendUrlWithTags = (bool)this.CheckBox_SendUrlWithTags.IsChecked;
+            Settings.Default.AutoSendAlwaysURL = (bool)this.CheckBox_AlwaysSendUrl.IsChecked;
+            Settings.Default.SendUrlWithTags = (bool)this.CheckBox_SendUrlWithTags.IsChecked;
 			Settings.Default.AddImagesToHydrusPage = (bool)this.CheckBox_AddImagesToHydrusPage.IsChecked;
 			Settings.Default.HydrusPageName = this.TextBox_HydrusPageName.Text;
 			Settings.Default.FocusHydrusPage = (bool)this.CheckBox_FocusHydrusPage.IsChecked;

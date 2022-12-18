@@ -435,7 +435,12 @@ namespace Hatate
 
 				bool success = await this.SendTagsToHydrusForResult(result, hydrusPageKey);
 
-				if (success) {
+				if(Options.Default.AutoSendAlwaysURL)
+				{
+					this.SendUrlToHydrus(result, result.Url);
+				}
+
+                if (success) {
 					this.RemoveResultFromFilesListbox(result);
 				} else {
 					this.ListBox_Files.SelectedItems.Remove(result);
