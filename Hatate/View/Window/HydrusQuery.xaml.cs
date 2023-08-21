@@ -270,9 +270,17 @@ namespace Hatate
 			string fileServiceKey = null;
 
 			if (App.hydrusApi.Unreachable) {
-				this.CancelQuery();
+				// retry once
+				App.hydrusApi.ResetUnreachableFlag();
+                await App.hydrusApi.GetServices();
 
-				return;
+				// still unreachable?
+				if (App.hydrusApi.Unreachable)
+				{
+					this.CancelQuery();
+					MessageBox.Show("Can't reach Hydrus API. Please check settings in the HydrusApi menu.");
+                    return;
+                }
 			}
 
 			bool doesSearchFilesSupportsServiceArguments = await App.hydrusApi.DoesSearchFilesSupportsServiceArguments();

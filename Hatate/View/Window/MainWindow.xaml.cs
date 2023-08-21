@@ -18,6 +18,8 @@ using MenuItem = System.Windows.Controls.MenuItem;
 using Brush = System.Windows.Media.Brush;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 using Timer = System.Windows.Forms.Timer;
+using FFmpeg.NET;
+using Hatate.TagNamespaces;
 
 namespace Hatate
 {
@@ -43,7 +45,7 @@ namespace Hatate
 		private Compare compareWindow = null;
 
 		// List of accepted image extentions
-		private string[] imagesFilesExtensions = new string[] { ".png", ".jpg", ".jpeg", ".bmp", ".jfif", ".webp", ".tiff" };
+		private string[] imagesFilesExtensions = new string[] { ".png", ".jpg", ".jpeg", ".bmp", ".jfif", ".webp", ".tiff", ".webm", ".mp4" };
 
 		public MainWindow()
 		{
@@ -170,7 +172,8 @@ namespace Hatate
 			}
 
 			// Don't read the local image as it's already a thumbnail and we already have informations about it from Hydrus metadata
-			if (result.HydrusFileId != null) {
+			if (result.HydrusFileId != null &&
+                File.Exists(result.ImagePath)) {
 				result.ThumbPath = result.ImagePath;
 
 				return true;
@@ -202,6 +205,12 @@ namespace Hatate
 			result.ThumbPath = thumbsDir + Guid.NewGuid().ToString() + '.' + result.Local.Format;
 
 			Directory.CreateDirectory(thumbsDir);
+
+			// Custom handling for video
+			if(IsVideo(result))
+			{
+				return ReadLocalVideo(result).Result;
+			}
 
 			// We'll generate a thumbnail to be uploaded
 			System.Drawing.Image image = null;
@@ -265,6 +274,27 @@ namespace Hatate
 
 			return true;
 		}
+
+		private async Task<bool> ReadLocalVideo(Result result)
+		{
+            var inputFile = new MediaFile(result.ImagePath);
+
+            string thumbsDir = App.ThumbsDirPath;
+
+			result.Local.Format = "jpg";
+            result.ThumbPath = thumbsDir + Guid.NewGuid().ToString() + '.' + result.Local.Format;
+
+            Directory.CreateDirectory(thumbsDir);
+
+            var outputFile = new MediaFile(result.ThumbPath);
+
+            var ffmpeg = new Engine();
+            // Saves the frame located on the 15th second of the video.
+            var options = new ConversionOptions { Seek = TimeSpan.FromSeconds(3) };
+            var mediaFile = await ffmpeg.GetThumbnailAsync(inputFile, outputFile, options);
+
+			return mediaFile != null;
+        }
 
 		/// <summary>
 		/// Get the next row index in the list.
@@ -359,6 +389,12 @@ namespace Hatate
 			bool isRetry = this.retrySearch;
 			this.retrySearch = false;
 
+			// Override search engine if video
+			if (this.IsVideo(result))
+			{
+				searchEngine = Enum.SearchEngine.TraceMoe;
+			}
+
 			// Some file format aren't supported by some search engines
 			if (!this.ImageFormatIsSupported(result.Local, searchEngine)) {
 				this.SetStatus("Image of type " + result.Local.Format + " not supported by " + searchEngine.ToString() + ", skipping.");
@@ -389,6 +425,10 @@ namespace Hatate
 				case Enum.SearchEngine.SauceNAO:
 					this.SetStatus("Searching file with SauceNAO...");
 					await this.SearchWithSauceNao(result);
+				break;
+				case Enum.SearchEngine.TraceMoe:
+					this.SetStatus("Searching file with Trace.Moe...");
+					await this.SearchWithTraceMoe(result);
 				break;
 			}
 
@@ -543,7 +583,29 @@ namespace Hatate
 			this.PortTagsOfMatchToResult(result);
 		}
 
-		private Match GetMatchWithBestSourceOrdering(Result result, Match currentMatch)
+        private async Task SearchWithTraceMoe(Result result)
+		{
+            TraceMoe traceMoe = new TraceMoe();
+
+            try
+            {
+                await traceMoe.SearchFile(result.ThumbPath);
+            }
+            catch (Exception)
+            {
+                // FormatException may happen in case of an invalid HTML response where no tags can be parsed
+            }
+
+            this.lastSearchedInSeconds = 1;
+
+            result.Matches = traceMoe.Matches;
+            result.UsedSearchEngine = Enum.SearchEngine.TraceMoe;
+
+            this.CheckMatches(result);
+            this.PortTagsOfMatchToResult(result);
+        }
+
+        private Match GetMatchWithBestSourceOrdering(Result result, Match currentMatch)
 		{
 			byte bestOrdering = 0;
 			byte similarityThreshold = Options.Default.SimilarityThreshold;
@@ -2005,6 +2067,19 @@ namespace Hatate
 
 			// tiff not supported by SauceNao
 			if (searchEngine == Enum.SearchEngine.SauceNAO && image.Format == "tiff") {
+				return false;
+			}
+
+			// TODO: figure out what trace.moe supports and check for it here
+
+			return true;
+		}
+
+		private bool IsVideo(Result image)
+		{
+			var ext = Path.GetExtension(image.ImagePath).ToLowerInvariant();
+			if(ext != "webm" && ext != "mp4")
+			{
 				return false;
 			}
 

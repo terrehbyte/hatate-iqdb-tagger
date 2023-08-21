@@ -172,6 +172,7 @@ namespace Hatate
 					this.SetConnectionSettings();
 					MessageBox.Show("Connection successful! Please select a tag service before saving.");
 				}
+				App.hydrusApi.ResetUnreachableFlag();
 			} catch (WebException exception) {
 				App.hydrusApi.ShowApiUnreachableMessage(exception.Message);
 				this.Button_Apply.IsEnabled = false;

@@ -3,6 +3,7 @@
 	public enum SearchEngine : byte
 	{
 		IQDB,
-		SauceNAO
+		SauceNAO,
+		TraceMoe
 	}
 }
